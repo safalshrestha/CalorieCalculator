@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Calorie Calculator Plugin</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="main.css" type="text/css" rel="stylesheet">
+    <script src="jquery.js"></script>
+</head>
+
+<body>
+    <form class="form-inline">
+        <div class="form-group">
+            <label>Keywords:</label>
+            <input type="text" id="keyword" class="form-control" onKeyUp="newSearch()">
+        </div>
+        <input type="button" class="btn btn-blue" id="btnsearch" value="Search for Food Item" onclick="newSearch()">
+    </form>
+    <div id="foodtablecontainer">
+        <table class="table table-condensed table-responsive table-striped">
+            <thead>
+                <tr>
+                    <th>Food</th>
+                    <th>Quantity</th>
+                    <th>Serving Size</th>
+                    <th>Calories</th>
+                    <th>Fat</th>
+                    <th>Protein</th>
+                    <th>Carbs*</th>
+                    <th>Fiber</th>
+                    <th>Total Sugar</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody id="foodtbody"></tbody>
+        </table>
+        <ul class="pagination" id="paginator"></ul>
+        <div class="small">*Total carbohydrates</div>
+    </div>
+    <div id="itemslist" class="hidden foodtablecalculator">
+        <table class="table table-condensed table-responsive table-striped">
+            <thead>
+                <tr>
+                    <th>Food</th>
+                    <th>Quantity</th>
+                    <th>Serving Size</th>
+                    <th>Calories</th>
+                    <th>Fat</th>
+                    <th>Protein</th>
+                    <th>Carbs*</th>
+                    <th>Fiber</th>
+                    <th>Total Sugar</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody id="list-tbody"></tbody>
+        </table>
+        <div class="small">*Total carbohydrates</div>
+    </div>
+    <div id="console"></div>
+</body>
+<script>
+    var npages = 0;
+    var page = 0;
+    var ppage = 10;
+
+    jQueryfoodtbody = jQuery('#foodtbody');
+    jQuerylisttbody = jQuery('#list-tbody');
+    jQuerykeyword = jQuery('#keyword');
+    jQueryconsole = jQuery('#console');
+
+    function servingSizeChanged(idfood) {
+        jQueryservingsize = jQuery('#servingsize-' + idfood);
+        jQueryenerg = jQuery('#energkcal-' + idfood);
+        jQuerylipid = jQuery('#lipidtot-' + idfood);
+        jQueryquantity = jQuery('#quantity-' + idfood);
+
+        jQuerytdcal = jQuery('#td-cal-' + idfood);
+        jQuerytdfat = jQuery('#td-fat-' + idfood);
+
+
+
+        var servingsize = jQueryservingsize.val();
+        var quantity = jQueryquantity.val();
+        var lipid = jQuerylipid.val();
+        var energ = jQueryenerg.val();
+
+        var fat = getNutrientGrams(lipid, servingsize, quantity);
+        var cals = getNutrientGrams(energ, servingsize, quantity);
+
+        jQuerytdfat.html(fat);
+        jQuerytdcal.html(cals);
+    }
+
+
+    function getNutrientGrams(sNutrientPer100g, sGramsPerServing, sQuantity) {
+        var nutrientPer100g = parseFloat(sNutrientPer100g);
+        var gramsPerServing = parseFloat(sGramsPerServing);
+        var quantity = parseFloat(sQuantity);
+        var nutrientPerServingTest = (nutrientPer100g * gramsPerServing);
+
+        var nutrientPerServing = (nutrientPer100g * gramsPerServing) / 100.0;
+
+        var nutrientGrams = quantity * nutrientPerServing;
+        return Math.floor(nutrientGrams);
+    }
+
+    var paginateditems = [];
+
+    function setPage(arrjson) {
+        paginateditems = [];
+
+        jQueryfoodtbody.html('');
+
+        var html = '';
+        for (var ii = 0; ii < arrjson.length; ii++) {
+            html += '<tr>';
+            html += "<input type='hidden' id='energkcal-" + arrjson[ii]['NDB_No'] + "' value='" + arrjson[ii]['Energ_Kcal'] + "'>";
+            html += "<input type='hidden' id='lipidtot-" + arrjson[ii]['NDB_No'] + "' value='" + arrjson[ii]['Lipid_Tot'] + "'>";
+            html += "<input type='hidden' id='fdesc-" + arrjson[ii]['NDB_No'] + "' value='" + arrjson[ii]['Shrt_Desc'] + "'>";
+            //New columns
+            html += "<input type='hidden' id='protein-" + arrjson[ii]['NDB_No'] + "' value='" + arrjson[ii]['Protein'] + "'>";
+            html += "<input type='hidden' id='carbohydrt-" + arrjson[ii]['NDB_No'] + "' value='" + arrjson[ii]['Carbohydrt'] + "'>";
+            html += "<input type='hidden' id='fiber-" + arrjson[ii]['NDB_No'] + "' value='" + arrjson[ii]['Fiber_TD'] + "'>";
+            html += "<input type='hidden' id='sugar-" + arrjson[ii]['NDB_No'] + "' value='" + arrjson[ii]['Sugar_Tot'] + "'>";
+
+            html += '<td data-title="Food">' + arrjson[ii]['Shrt_Desc'] + '</td>';
+            html += '<td data-title="Quantity">' + "<input type='text' id='quantity-" + arrjson[ii]['NDB_No'] + "' value='1'>" + '</td>';
+            html += '<td data-title="Serving Size">' + "<select id='servingsize-" + arrjson[ii]['NDB_No'] + "' onchange='servingSizeChanged(" + arrjson[ii]['NDB_No'] + ")'>" +
+                "<option value='100'>100 gr</option>" +
+                "<option value='" + arrjson[ii]['GmWt_1'] + "'>" + arrjson[ii]['GmWt_Desc1'] + "</option>" +
+                "<option value='" + arrjson[ii]['GmWt_2'] + "'>" + arrjson[ii]['GmWt_Desc2'] + "</option>" +
+                "</select>" + '</td>';
+            html += "<td id='td-cal-" + arrjson[ii]['NDB_No'] + "' data-title='Calories'>" + getNutrientGrams(arrjson[ii]['Energ_Kcal'], 100, 1) + '</td>';
+            html += "<td id='td-fat-" + arrjson[ii]['NDB_No'] + "' data-title='Fat'>" + getNutrientGrams(arrjson[ii]['Lipid_Tot'], 100, 1) + '</td>';
+            //New columns
+            html += "<td id='td-pro-" + arrjson[ii]['NDB_No'] + "' data-title='Protein'>" + getNutrientGrams(arrjson[ii]['Protein'], 100, 1) + '</td>';
+            html += "<td id='td-car-" + arrjson[ii]['NDB_No'] + "' data-title='Carbs*'>" + getNutrientGrams(arrjson[ii]['Carbohydrt'], 100, 1) + '</td>';
+            html += "<td id='td-fib-" + arrjson[ii]['NDB_No'] + "' data-title='Fiber'>" + getNutrientGrams(arrjson[ii]['Fiber_TD'], 100, 1) + '</td>';
+            html += "<td id='td-sug-" + arrjson[ii]['NDB_No'] + "' data-title='Total Sugar'>" + getNutrientGrams(arrjson[ii]['Sugar_Tot'], 100, 1) + '</td>';
+
+            html += '<td>' + "<button class='add btn btn-default' onclick='addToList(" + arrjson[ii]['NDB_No'] + ")'>Add</button>" + '</td>';
+            html += '</tr>';
+        }
+
+        jQueryfoodtbody.html(html);
+    }
+
+
+    function setPageAndSearchFood(p) {
+        page = p;
+        searchFood();
+    }
+
+    function setPaginator(npages) {
+        var html = '';
+        for (var ii = 1; ii < npages; ii++) {
+            html += "<li><a href='javascript:;' onclick='setPageAndSearchFood(" + ii + ")'>" + ii + "</a></li> &nbsp;";
+        }
+
+        jQuery('#paginator').html(html);
+    }
+
+    function newSearch() {
+        page = 0;
+        searchFood();
+    }
+
+    function searchFood() {
+        var food = jQuerykeyword.val();
+        //var arrayFoodSearch = food.split(" ");
+        //console.log(arrayFoodSearch);
+
+
+
+        /*if(food.length <= 0) {
+            alert('You must insert a food keyword');
+            return;
+        }*/
+
+
+        var host = 'http://localhost:8888/livedinner';
+        var dir = '/apis'
+
+
+        jQuery.ajax({
+            url: host + dir + '/calorie_calculator.php',
+            method: 'GET',
+            data: {
+                keyword: food,
+                page: page,
+                ppage: ppage
+            },
+            success: function (html) {
+                var jsondata = JSON.parse(html);
+                console.log(jsondata);
+
+                setPage(jsondata['data']);
+                npages = jsondata['npages'];
+                setPaginator(npages);
+            },
+            error: function (p1, p2, p3) {
+                console.log(p1);
+                alert('Error!: ' + p1);
+            }
+        });
+    }
+
+    var foodlist = [];
+
+    function recalc() {
+        var totalfat = 0;
+        var totalcals = 0;
+        var totalproteins = 0;
+        var totalcarbohydrts = 0;
+        var totalfibers = 0;
+        var totalsugars = 0;
+
+        for (var ii = 0; ii < foodlist.length; ii++) {
+            totalfat += foodlist[ii].fat;
+            totalcals += foodlist[ii].cals;
+            totalproteins += foodlist[ii].proteins;
+            totalcarbohydrts += foodlist[ii].carbohydrts;
+            totalfibers += foodlist[ii].fibers;
+            totalsugars += foodlist[ii].sugars;
+        }
+
+        var html = "<tr>";
+        html += "<tr>";
+        html += "<td>" + "</td>";
+        html += "<td>" + "</td>";
+        html += "<td><strong>SUBTOTALS</strong>" + "</td>";
+        html += "<td data-title='Calories'><strong>" + totalcals + "</strong></td>";
+        html += "<td data-title='Fat'><strong>" + totalfat + "</strong></td>";
+        html += "<td data-title='Protein'><strong>" + totalproteins + "</strong></td>";
+        html += "<td data-title='Carbs*'><strong>" + totalcarbohydrts + "</strong></td>";
+        html += "<td data-title='Fiber'><strong>" + totalfibers + "</strong></td>";
+        html += "<td data-title='Total Sugar'><strong>" + totalsugars + "</strong></td>";
+        html += "</tr>";
+
+        jQuerylisttbody.html(jQuerylisttbody.html() + html);
+    }
+
+    function refreshList() {
+        jQuerylisttbody.html('');
+
+        var html = '';
+        for (var ii = 0; ii < foodlist.length; ii++) {
+            html += "<tr id='iditemlist-" + ii + "'>";
+            html += "<td data-title='Food'>" + foodlist[ii].food + "</td>";
+            html += "<td data-title='Quantity'>" + foodlist[ii].quantity + "</td>";
+            html += "<td data-title='Serving Size'>" + foodlist[ii].descservingsize + "</td>";
+            html += "<td data-title='Calories'>" + foodlist[ii].cals + "</td>";
+            html += "<td data-title='Fat'>" + foodlist[ii].fat + "</td>";
+            html += "<td data-title='Protein'>" + foodlist[ii].proteins + "</td>";
+            html += "<td data-title='Carbs*'>" + foodlist[ii].carbohydrts + "</td>";
+            html += "<td data-title='Fiber'>" + foodlist[ii].fibers + "</td>";
+            html += "<td data-title='Total Sugar'>" + foodlist[ii].sugars + "</td>";
+            html += "<td>" + "<input type='button' class='remove btn btn-default' onclick='removefromlist(" + ii + ")' value='Remove'>" + "</td>";
+            html += "</tr>";
+        }
+
+        jQuerylisttbody.html(html);
+    }
+
+    function removefromlist(index) {
+        foodlist.splice(index, 1);
+        refreshList();
+
+        if (foodlist.length > 0)
+            recalc();
+    }
+
+    function addToList(idfood) {
+        jQuery('#itemslist').removeClass('hidden');
+
+        var fdesc = jQuery('#fdesc-' + idfood).val();
+        var fservingsiz = jQuery('#servingsize-' + idfood).val();
+        var fdescservingsiz = jQuery("#servingsize-" + idfood + " option[value='" + fservingsiz + "']").text()
+        var fquantity = jQuery('#quantity-' + idfood).val();
+        var flipid = jQuery('#lipidtot-' + idfood).val();
+        var fenerg = jQuery('#energkcal-' + idfood).val();
+        //New columns
+        var protein = jQuery('#protein-' + idfood).val();
+        var carbohydrt = jQuery('#carbohydrt-' + idfood).val();
+        var fiber = jQuery('#fiber-' + idfood).val();
+        var sugar = jQuery('#sugar-' + idfood).val();
+
+
+        var fat = getNutrientGrams(flipid, fservingsiz, fquantity);
+        var cals = getNutrientGrams(fenerg, fservingsiz, fquantity);
+        //New columns
+        var proteins = getNutrientGrams(protein, fservingsiz, fquantity);
+        var carbohydrts = getNutrientGrams(carbohydrt, fservingsiz, fquantity);
+        var fibers = getNutrientGrams(fiber, fservingsiz, fquantity);
+        var sugars = getNutrientGrams(sugar, fservingsiz, fquantity);
+
+        foodlist.push({
+            food: fdesc,
+            quantity: fquantity,
+            descservingsize: fdescservingsiz,
+            servingsize: fservingsiz,
+            fat: fat,
+            cals: cals,
+            proteins: proteins,
+            carbohydrts: carbohydrts,
+            fibers: fibers,
+            sugars: sugars
+        });
+
+        refreshList();
+        recalc();
+    }
+</script>
+
+</html>
